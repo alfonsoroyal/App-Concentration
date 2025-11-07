@@ -11,11 +11,34 @@ const POLL_MS = 1500;
 let pollHandle;
 let catalogPanelOpen = false; // nuevo estado
 let lastCatalogSignature = '';
+let isDemo = false; // indica si estamos en modo estático sin backend
 
 async function getJSON(url, opts){
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' }, ...opts });
-  if(!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try{
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' }, ...opts });
+    if(!res.ok) throw new Error(await res.text());
+    return await res.json();
+  }catch(err){
+    // Modo demo: si fallan llamadas al backend en Pages, devolver datos simulados
+    if(url==='/api/state'){
+      isDemo = true;
+      return {
+        points: 0,
+        timer: { isRunning:false, startUtc:new Date().toISOString(), durationSeconds:0, cancelled:false },
+        catalog: demoCatalog(),
+        house: { slots: demoSlots(), placed: {} }
+      };
+    }
+    if(url.startsWith('/api/preview')){
+      isDemo = true;
+      return { preview: demoCatalog()[0] };
+    }
+    if(url.startsWith('/api/purchase')){
+      isDemo = true;
+      return { points: state.points, placed: state.house.placed };
+    }
+    throw err;
+  }
 }
 
 async function postJSON(url, body){
@@ -48,11 +71,13 @@ async function refreshState(){
 
 function startPolling(){
   clearInterval(pollHandle);
+  // En modo demo reducimos la frecuencia drásticamente
+  const interval = isDemo ? 30000 : POLL_MS;
   pollHandle = setInterval(async ()=>{
     try{
       await refreshState();
     }catch(e){ /* silencioso */ }
-  }, POLL_MS);
+  }, interval);
 }
 
 let localTimerInterval;
@@ -104,7 +129,8 @@ function showClaimDialog(){
   // Calcular recompensa prevista localmente
   if(state.timer){
     const rewardSeconds = state.timer.durationSeconds;
-    document.getElementById('claimReward').textContent = Math.max(1, Math.floor(rewardSeconds / 5));
+    const calcReward = Math.max(1, Math.floor(rewardSeconds / 5));
+    rewardSpan.textContent = calcReward;
   }
   dlg.showModal();
   const confirmBtn = document.getElementById('claimConfirm');
@@ -113,12 +139,21 @@ function showClaimDialog(){
     if(!pendingClaim) { dlg.close(); return; }
     confirmBtn.disabled = true;
     try{
-      const res = await postJSON('/api/timer/claim');
-      state.points = res.points;
-      pendingClaim = false;
-      state.timer = null;
-      renderPoints();
-      updateTimerStatus('Esperando siguiente concentración');
+      if(isDemo){
+        // En demo simplemente sumamos puntos locales
+        state.points += parseInt(rewardSpan.textContent,10)||0;
+        pendingClaim = false;
+        state.timer = null;
+        renderPoints();
+        updateTimerStatus('Demo: recompensa aplicada localmente');
+      } else {
+        const res = await postJSON('/api/timer/claim');
+        state.points = res.points;
+        pendingClaim = false;
+        state.timer = null;
+        renderPoints();
+        updateTimerStatus('Esperando siguiente concentración');
+      }
     }catch(err){
       alert(err.message||err);
     }finally{
@@ -322,7 +357,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // --- Funciones faltantes ---
 function renderPoints(){
   const span = document.getElementById('pointsValue');
-  if(span) span.textContent = state.points;
+  if(span) span.textContent = state.points + (isDemo ? ' (demo)' : '');
 }
 
 function computeCatalogSignature(items){
@@ -378,4 +413,19 @@ function renderHouse(){
     div.appendChild(label);
     host.appendChild(div);
   }
+}
+
+function demoSlots(){
+  return ["sofa","mesa","lampara","cuadro","cocina_mueble","cocina_frigorifico","cocina_horno","planta_suelo","planta_colgante","alfombra","estanteria"];
+}
+function demoCatalog(){
+  const base = 'img/';
+  return [
+    { id:'sofa_clasico', slot:'sofa', category:'Sala', name:'Sofá clásico', cost:30, image: base+'sofa1.svg' },
+    { id:'sofa_moderno', slot:'sofa', category:'Sala', name:'Sofá moderno', cost:45, image: base+'sofa2.svg' },
+    { id:'mesa_roble', slot:'mesa', category:'Sala', name:'Mesa roble', cost:25, image: base+'mesa1.svg' },
+    { id:'mesa_vidrio', slot:'mesa', category:'Sala', name:'Mesa vidrio', cost:35, image: base+'mesa2.svg' },
+    { id:'lampara_pie', slot:'lampara', category:'Iluminación', name:'Lámpara pie', cost:20, image: base+'lampara1.svg' },
+    { id:'lampara_mod', slot:'lampara', category:'Iluminación', name:'Lámpara moderna', cost:32, image: base+'lampara_mod.svg' }
+  ];
 }
