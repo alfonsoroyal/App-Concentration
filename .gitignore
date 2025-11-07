@@ -1,0 +1,58 @@
+# ---- Visual Studio / Rider / .NET ----
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / IntelliJ project files
+.idea/**
+!.idea/runConfigurations/**
+*.iml
+
+# Build results
+bin/
+obj/
+
+# NuGet packages (allow package references, block packages folder if any)
+*.nupkg
+**/packages/*
+!**/packages/build/
+
+# Logs
+*.log
+
+# VS Code settings
+.vscode/
+
+# Backup & temp files
+*~
+*.tmp
+*.temp
+
+# ASP.NET data file persisted
+/game_state.json
+
+# Node / front-end (if added later)
+node_modules/
+*.tsbuildinfo
+
+# Cache
+**/wwwroot/*.cache
+
+# Publish outputs
+**/publish/
+
+# Resharper caches
+_ReSharper.Caches/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Static analysis reports
+*.sarif
+
+# Prevent committing secrets (add actual filename if used)
+appsettings.Development.json
+appsettings.Local.json
+
