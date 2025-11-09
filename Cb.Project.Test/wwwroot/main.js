@@ -12,14 +12,181 @@ let pollHandle;
 let catalogPanelOpen = false; // nuevo estado
 let lastCatalogSignature = '';
 
+// --- LocalStore: persistencia en localStorage para modo sin backend ---
+const LOCAL_KEY = 'game_state_v1';
+const LocalStore = {
+  load() {
+    try {
+      const raw = localStorage.getItem(LOCAL_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  },
+  save(obj) {
+    try {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(obj));
+    } catch (e) { console.warn('LocalStore save failed', e); }
+  },
+  seed() {
+    const base = '/img/';
+    const catalog = [
+      { id:'sofa_clasico', slot:'sofa', category:'Sala', name:'Sof clásico', cost:30, image: base+'sofa1.svg' },
+      { id:'sofa_moderno', slot:'sofa', category:'Sala', name:'Sof moderno', cost:45, image: base+'sofa2.svg' },
+      { id:'mesa_roble', slot:'mesa', category:'Sala', name:'Mesa roble', cost:25, image: base+'mesa1.svg' },
+      { id:'mesa_vidrio', slot:'mesa', category:'Sala', name:'Mesa vidrio', cost:35, image: base+'mesa2.svg' },
+      { id:'lampara_pie', slot:'lampara', category:'Iluminación', name:'Lámpara pie', cost:20, image: base+'lampara1.svg' },
+      { id:'lampara_mod', slot:'lampara', category:'Iluminación', name:'Lámpara moderna', cost:32, image: base+'lampara_mod.svg' },
+      { id:'cocina_mueble_blanco', slot:'cocina_mueble', category:'Cocina', name:'Mueble blanco', cost:40, image: base+'cocina_mueble_blanco.svg' },
+      { id:'cocina_mueble_madera', slot:'cocina_mueble', category:'Cocina', name:'Mueble madera', cost:42, image: base+'cocina_mueble_madera.svg' },
+      // ... puedes añadir más items según el catálogo original ...
+    ];
+    const slots = ["sofa","mesa","lampara","cuadro","cocina_mueble","cocina_frigorifico","cocina_horno","planta_suelo","planta_colgante","alfombra","estanteria"];
+    const now = new Date().toISOString();
+    return {
+      points: 0,
+      timer: { isRunning:false, startUtc: now, durationSeconds:0, cancelled:false },
+      catalog,
+      house: { slots, placed: {} },
+      theme: 'default',
+      achievements: []
+    };
+  },
+  initIfNeeded() {
+    let st = this.load();
+    if (!st) {
+      st = this.seed();
+      this.save(st);
+    } else {
+      // ensure catalog and slots exist
+      if(!Array.isArray(st.catalog) || st.catalog.length===0) st.catalog = this.seed().catalog;
+      if(!st.house || !Array.isArray(st.house.slots)) st.house = this.seed().house;
+    }
+    return st;
+  },
+  getState() {
+    const s = this.initIfNeeded();
+    return s;
+  },
+  setState(s) {
+    this.save(s);
+  },
+  startTimer(seconds) {
+    const s = this.getState();
+    s.timer = { isRunning:true, startUtc: new Date().toISOString(), durationSeconds: seconds, cancelled:false };
+    this.setState(s);
+    return s;
+  },
+  cancelTimer() {
+    const s = this.getState();
+    if(s.timer) s.timer = { isRunning:false, startUtc: new Date().toISOString(), durationSeconds:0, cancelled:true };
+    this.setState(s);
+    return s;
+  },
+  claimTimer() {
+    const s = this.getState();
+    if(!s.timer) throw new Error('No timer');
+    // Si el timer sigue marcado como isRunning comprobamos si ya pasó su duración
+    const t = s.timer;
+    if(t.isRunning){
+      const startMs = Date.parse(t.startUtc);
+      const durMs = (t.durationSeconds||0) * 1000;
+      const elapsed = Date.now() - startMs;
+      if(elapsed < durMs) throw new Error('Timer not finished');
+    }
+    const reward = Math.max(1, Math.floor((t.durationSeconds||0) / 5));
+    s.points = (s.points||0) + reward;
+    s.timer = { isRunning:false, startUtc: new Date().toISOString(), durationSeconds:0, cancelled:false };
+    this.setState(s);
+    return s;
+  },
+  preview(slot, itemId) {
+    const s = this.getState();
+    const item = s.catalog.find(x => x.id === itemId) || null;
+    return { preview: item };
+  },
+  purchase(slot, itemId) {
+    const s = this.getState();
+    const item = s.catalog.find(x => x.id === itemId);
+    if(!item) throw new Error('Item not found');
+    if((s.points||0) < item.cost) throw new Error('Insufficient points');
+    s.points = (s.points||0) - item.cost;
+    if(!s.house) s.house = { slots: [], placed: {} };
+    s.house.placed = s.house.placed || {};
+    s.house.placed[slot] = item.id;
+    this.setState(s);
+    return { points: s.points, placed: s.house.placed };
+  }
+};
+
+// Helper: small timeout for fetch
+function fetchWithTimeout(resource, options = {}){
+  const { timeout = 4000 } = options;
+  return Promise.race([
+    fetch(resource, options),
+    new Promise((_, reject) => setTimeout(()=> reject(new Error('timeout')), timeout))
+  ]);
+}
+
+// Reemplazamos getJSON/postJSON para usar fetch si está disponible, sino fallback a LocalStore.
 async function getJSON(url, opts){
-  const res = await fetch(url, { headers: { 'Accept': 'application/json' }, ...opts });
-  if(!res.ok) throw new Error(await res.text());
-  return await res.json();
+  // Intentionally attempt network fetch first for full functionality
+  try{
+    const res = await fetchWithTimeout(url, { headers: { 'Accept': 'application/json' }, ...opts, timeout:4000 });
+    if(!res.ok) throw new Error(await res.text().catch(()=>res.statusText));
+    return await res.json();
+  }catch(err){
+    // Fallback local handlers
+    // Support exact endpoints used by the app
+    if(url === '/api/state'){
+      return LocalStore.getState();
+    }
+    if(url === '/api/catalog'){
+      const s = LocalStore.getState(); return s.catalog;
+    }
+    if(url === '/api/house'){
+      const s = LocalStore.getState(); return s.house;
+    }
+    if(url === '/api/achievements'){
+      const s = LocalStore.getState(); return s.achievements || [];
+    }
+    if(url.startsWith('/api/theme')){
+      const s = LocalStore.getState(); return { theme: s.theme || 'default' };
+    }
+    // If not handled, rethrow
+    throw err;
+  }
 }
 
 async function postJSON(url, body){
-  return await getJSON(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body||{}) });
+  try{
+    const res = await fetchWithTimeout(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body||{}), timeout:4000 });
+    if(!res.ok) throw new Error(await res.text().catch(()=>res.statusText));
+    return await res.json();
+  }catch(err){
+    // Fallback local handlers
+    if(url === '/api/timer/start'){
+      const sec = body && (body.seconds || body.seconds===0) ? body.seconds : (body && body.seconds);
+      const s = LocalStore.startTimer(sec);
+      return s;
+    }
+    if(url === '/api/timer/cancel'){
+      return LocalStore.cancelTimer();
+    }
+    if(url === '/api/timer/claim'){
+      return LocalStore.claimTimer();
+    }
+    if(url === '/api/preview'){
+      return LocalStore.preview(body.slot, body.itemId);
+    }
+    if(url === '/api/purchase'){
+      return LocalStore.purchase(body.slot, body.itemId);
+    }
+    if(url === '/api/theme'){ // set theme
+      const s = LocalStore.getState(); s.theme = body.theme || s.theme; LocalStore.setState(s); return { theme: s.theme };
+    }
+    // If not handled, rethrow
+    throw err;
+  }
 }
 
 async function loadAll(){
@@ -114,7 +281,7 @@ function showClaimDialog(){
     confirmBtn.disabled = true;
     try{
       const res = await postJSON('/api/timer/claim');
-      state.points = res.points;
+      state.points = res.points || res.points === 0 ? res.points : (state.points||0);
       pendingClaim = false;
       state.timer = null;
       renderPoints();
