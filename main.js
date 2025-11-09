@@ -456,6 +456,12 @@ function renderCatalog(){
         state.house.placed = res.placed;
         renderPoints();
         renderHouse();
+        // En móvil cerrar panel para evitar scroll adicional
+        if(window.matchMedia('(max-width:600px)').matches){
+          const panel = document.getElementById('catalogPanel');
+          if(panel) panel.classList.add('hidden');
+          catalogPanelOpen = false;
+        }
       }
     }catch(err){ alert(err.message||err); }
   };
@@ -543,11 +549,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const navCatalog = document.getElementById('navCatalog');
   const navTimer = document.getElementById('navTimer');
   const navShop = document.getElementById('navShop');
+  const closeCatalog = document.getElementById('closeCatalogBtn');
+  if(closeCatalog) closeCatalog.addEventListener('click', ()=>{
+    const panel = document.getElementById('catalogPanel');
+    if(panel) panel.classList.add('hidden');
+    catalogPanelOpen = false;
+  });
+
   if(navCatalog) navCatalog.addEventListener('click', ()=>{
     const panel = document.getElementById('catalogPanel');
     if(panel) panel.classList.toggle('hidden');
     // mostrar acciones accesibles
     catalogPanelOpen = !panel.classList.contains('hidden');
+    // Si se acaba de abrir, asegurarnos de que empiece en la parte superior en pantallas pequeñas
+    if(catalogPanelOpen && window.matchMedia('(max-width:600px)').matches){
+      setTimeout(()=>{ panel.scrollTo({ top: 0, behavior: 'smooth' }); }, 60);
+    }
   });
   if(navTimer) navTimer.addEventListener('click', ()=>{
     // Hacer scroll suave al temporizador para usuarios móviles
@@ -623,6 +640,10 @@ function setupCatalogToggle(){
       // Re-render inicial al abrir
       lastCatalogSignature = computeCatalogSignature(state.catalog); // sincronizar firma
       renderCatalog();
+      // En móvil, asegurarnos de que el contenido comience desde arriba y no nos obligue a scroll largo
+      if(window.matchMedia('(max-width:600px)').matches){
+        setTimeout(()=>{ panel.scrollTo({ top: 0, behavior: 'smooth' }); }, 80);
+      }
     }
   });
 }
