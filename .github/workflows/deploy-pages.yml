@@ -16,6 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure .nojekyll to prevent GitHub Pages Jekyll build
+        run: |
+          mkdir -p Cb.Project.Test/wwwroot
+          touch Cb.Project.Test/wwwroot/.nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
