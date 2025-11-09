@@ -390,7 +390,7 @@ function buildFilters(){
     const b = document.createElement('button');
     b.textContent = label;
     b.dataset.f = id;
-    ifid===currentFilter) b.classList.add('active');
+    if (id === currentFilter) b.classList.add('active');
     b.onclick = ()=>{ currentFilter = id; buildFilters(); renderCatalog(); };
     return b;
   };
