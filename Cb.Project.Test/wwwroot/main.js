@@ -48,7 +48,7 @@ async function refreshState(){
 
 function startPolling(){
   clearInterval(pollHandle);
-  pollHandle = setInterval(async ()=>{
+  pollHandle = setInterval(async () => {
     try{
       await refreshState();
     }catch(e){ /* silencioso */ }
@@ -104,7 +104,7 @@ function showClaimDialog(){
   // Calcular recompensa prevista localmente
   if(state.timer){
     const rewardSeconds = state.timer.durationSeconds;
-    document.getElementById('claimReward').textContent = Math.max(1, Math.floor(rewardSeconds / 5));
+    rewardSpan.textContent = Math.max(1, Math.floor(rewardSeconds / 5));
   }
   dlg.showModal();
   const confirmBtn = document.getElementById('claimConfirm');
@@ -136,7 +136,7 @@ function updateTimerStatus(text){
 function renderTimer(){
   if(!state.timer || !state.timer.isRunning){
     clearInterval(localTimerInterval);
-    updateTimerStatus('Esperando siguiente concentraci��n');
+    updateTimerStatus('Esperando siguiente concentración');
     return;
   }
   startLocalTimerLoop();
@@ -364,13 +364,11 @@ function renderHouse(){
     if(itemId){
       const item = state.catalog.find(c=>c.id===itemId);
       if(item){
-        div.classList.add('filled');
         const img = document.createElement('img');
         img.src = item.image;
         img.alt = item.name;
         div.appendChild(img);
-      } else {
-        div.classList.add('empty');
+        div.classList.add('filled');
       }
     } else {
       div.classList.add('empty');
