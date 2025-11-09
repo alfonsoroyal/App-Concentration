@@ -11,6 +11,16 @@ const POLL_MS = 1500;
 let pollHandle;
 let catalogPanelOpen = false; // nuevo estado
 let lastCatalogSignature = '';
+let SITE_BASE = ''; // base absoluta construida al cargar la página
+
+// helper para construir URL absoluta desde rutas relativas/absolutas internas
+function makeAbsolutePath(p){
+  if(!p) return p;
+  if(p.startsWith('http://') || p.startsWith('https://') || p.startsWith('data:')) return p;
+  const clean = p.startsWith('/') ? p.slice(1) : p;
+  const base = SITE_BASE || (location.origin + '/');
+  return base + clean;
+}
 
 // --- LocalStore: persistencia en localStorage para modo sin backend ---
 const LOCAL_KEY = 'game_state_v1';
@@ -201,6 +211,12 @@ async function refreshState(){
   state.timer = game.timer;
   state.catalog = game.catalog;
   state.house = game.house;
+  // Normalizar imágenes del catálogo a rutas absolutas para que no dependan de la carpeta actual
+  try{
+    if(Array.isArray(state.catalog)){
+      state.catalog.forEach(i=>{ if(i && i.image) i.image = makeAbsolutePath(i.image); });
+    }
+  }catch(e){/* silencioso */}
   renderPoints();
   renderHouse();
   buildFilters();
@@ -453,46 +469,58 @@ function openPreview(item, slot){
 
 // Llamada inicial (faltaba)
 document.addEventListener('DOMContentLoaded', ()=>{
-  // FixPaths: corrige referencias absolutas que comienzan con '/' para GitHub Pages en repositorios
-  (function fixPathsForGithubPages(){
+  // Construir SITE_BASE desde <base href> si existe, o usar origin
+  (function computeSiteBase(){
     try{
-      const fix = (s)=> s && s.startsWith('/') ? s.slice(1) : s;
+      const baseEl = document.querySelector('base');
+      let baseHref = baseEl ? baseEl.getAttribute('href') : '/';
+      if(!baseHref) baseHref = '/';
+      if(!baseHref.endsWith('/')) baseHref += '/';
+      // Asegurarnos de que comienza con '/'
+      if(!baseHref.startsWith('/')) baseHref = '/' + baseHref;
+      SITE_BASE = location.origin + baseHref;
+    }catch(e){ SITE_BASE = location.origin + '/'; }
+  })();
+
+  // FixPaths: convertir rutas internas a absolutas para que no dependan de la carpeta actual
+  (function makeAbsoluteUrlsInDOM(){
+    try{
       // imgs
       document.querySelectorAll('img').forEach(img=>{
         const src = img.getAttribute('src');
-        if(src) img.setAttribute('src', fix(src));
+        if(src) img.setAttribute('src', makeAbsolutePath(src));
         const srcset = img.getAttribute('srcset');
         if(srcset){
           const parts = srcset.split(',').map(p=>p.trim()).map(p=>{
             const [url, w] = p.split(/\s+/);
-            return (fix(url)) + (w ? ' '+w : '');
+            return makeAbsolutePath(url) + (w ? ' '+w : '');
           });
           img.setAttribute('srcset', parts.join(', '));
         }
       });
       // elements with data-src or data-bg
-      document.querySelectorAll('[data-src]').forEach(el=> el.setAttribute('data-src', fix(el.getAttribute('data-src'))));
-      document.querySelectorAll('[data-bg]').forEach(el=> el.setAttribute('data-bg', fix(el.getAttribute('data-bg'))));
+      document.querySelectorAll('[data-src]').forEach(el=> el.setAttribute('data-src', makeAbsolutePath(el.getAttribute('data-src'))));
+      document.querySelectorAll('[data-bg]').forEach(el=> el.setAttribute('data-bg', makeAbsolutePath(el.getAttribute('data-bg'))));
       // inline styles background-image
       document.querySelectorAll('[style]').forEach(el=>{
         const style = el.getAttribute('style');
         if(style && style.includes('background-image')){
-          const replaced = style.replace(/url\((['"]?)(\/[^)'"]+)\1\)/g, (m, q, url)=> `url(${q}${url.slice(1)}${q})`);
+          const replaced = style.replace(/url\((['"]?)([^)'"]+)\1\)/g, (m, q, url)=> `url(${q}${makeAbsolutePath(url)}${q})`);
           if(replaced !== style) el.setAttribute('style', replaced);
         }
       });
       // <source> elements (picture, video)
       document.querySelectorAll('source').forEach(s=>{
-        const src = s.getAttribute('src'); if(src) s.setAttribute('src', fix(src));
+        const src = s.getAttribute('src'); if(src) s.setAttribute('src', makeAbsolutePath(src));
         const srcset = s.getAttribute('srcset'); if(srcset){
           const parts = srcset.split(',').map(p=>p.trim()).map(p=>{
             const [url, w] = p.split(/\s+/);
-            return (fix(url)) + (w ? ' '+w : '');
+            return makeAbsolutePath(url) + (w ? ' '+w : '');
           });
           s.setAttribute('srcset', parts.join(', '));
         }
       });
-    }catch(e){ console.warn('fixPathsForGithubPages failed', e); }
+    }catch(e){ console.warn('makeAbsoluteUrlsInDOM failed', e); }
   })();
 
   loadAll().catch(e=>alert(e.message||e));
