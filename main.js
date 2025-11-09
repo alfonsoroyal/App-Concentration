@@ -453,6 +453,48 @@ function openPreview(item, slot){
 
 // Llamada inicial (faltaba)
 document.addEventListener('DOMContentLoaded', ()=>{
+  // FixPaths: corrige referencias absolutas que comienzan con '/' para GitHub Pages en repositorios
+  (function fixPathsForGithubPages(){
+    try{
+      const fix = (s)=> s && s.startsWith('/') ? s.slice(1) : s;
+      // imgs
+      document.querySelectorAll('img').forEach(img=>{
+        const src = img.getAttribute('src');
+        if(src) img.setAttribute('src', fix(src));
+        const srcset = img.getAttribute('srcset');
+        if(srcset){
+          const parts = srcset.split(',').map(p=>p.trim()).map(p=>{
+            const [url, w] = p.split(/\s+/);
+            return (fix(url)) + (w ? ' '+w : '');
+          });
+          img.setAttribute('srcset', parts.join(', '));
+        }
+      });
+      // elements with data-src or data-bg
+      document.querySelectorAll('[data-src]').forEach(el=> el.setAttribute('data-src', fix(el.getAttribute('data-src'))));
+      document.querySelectorAll('[data-bg]').forEach(el=> el.setAttribute('data-bg', fix(el.getAttribute('data-bg'))));
+      // inline styles background-image
+      document.querySelectorAll('[style]').forEach(el=>{
+        const style = el.getAttribute('style');
+        if(style && style.includes('background-image')){
+          const replaced = style.replace(/url\((['"]?)(\/[^)'"]+)\1\)/g, (m, q, url)=> `url(${q}${url.slice(1)}${q})`);
+          if(replaced !== style) el.setAttribute('style', replaced);
+        }
+      });
+      // <source> elements (picture, video)
+      document.querySelectorAll('source').forEach(s=>{
+        const src = s.getAttribute('src'); if(src) s.setAttribute('src', fix(src));
+        const srcset = s.getAttribute('srcset'); if(srcset){
+          const parts = srcset.split(',').map(p=>p.trim()).map(p=>{
+            const [url, w] = p.split(/\s+/);
+            return (fix(url)) + (w ? ' '+w : '');
+          });
+          s.setAttribute('srcset', parts.join(', '));
+        }
+      });
+    }catch(e){ console.warn('fixPathsForGithubPages failed', e); }
+  })();
+
   loadAll().catch(e=>alert(e.message||e));
 });
 
