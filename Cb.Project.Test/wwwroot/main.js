@@ -28,7 +28,7 @@ const LocalStore = {
     } catch (e) { console.warn('LocalStore save failed', e); }
   },
   seed() {
-    const base = '/img/';
+    const base = 'img/';
     const catalog = [
       { id:'sofa_clasico', slot:'sofa', category:'Sala', name:'Sofá clásico', cost:30, image: base+'sofa1.svg' },
       { id:'sofa_moderno', slot:'sofa', category:'Sala', name:'Sofá moderno', cost:45, image: base+'sofa2.svg' },
