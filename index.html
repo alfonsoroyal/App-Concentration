@@ -25,6 +25,7 @@
 <main>
   <section class="timer">
     <h2>Temporizador</h2>
+    <div class="timer-display" id="timerDisplay">--:--</div>
     <div class="controls">
       <label style="display:flex;align-items:center;gap:4px;">
         <span>Duración</span>
@@ -71,6 +72,12 @@
     </form>
   </dialog>
 </main>
+
+<footer id="mobileNav" aria-hidden="true">
+  <button id="navCatalog">Catálogo</button>
+  <button id="navTimer">Temporizador</button>
+  <button id="navShop">Tienda</button>
+</footer>
 
 <script defer src="main.js?v=20251107"></script>
 </body>

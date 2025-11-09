@@ -313,7 +313,21 @@ function showClaimDialog(){
 
 function updateTimerStatus(text){
   const status = document.getElementById('status');
+  const disp = document.getElementById('timerDisplay');
   status.textContent = text;
+  if(disp){
+    // Si el texto tiene formato Restante: MM:SS o 00:00, mostrar solo la parte de tiempo cuando aplique
+    if(text && text.startsWith('Restante:')){
+      disp.textContent = text.replace('Restante:','').trim();
+    } else if(text && text === 'Listo para reclamar'){
+      disp.textContent = '00:00';
+    } else if(text && text === 'Esperando siguiente concentración'){
+      disp.textContent = '--:--';
+    } else {
+      // por defecto, mostrar el texto breve
+      disp.textContent = text;
+    }
+  }
 }
 
 function renderTimer(){
@@ -524,6 +538,35 @@ document.addEventListener('DOMContentLoaded', ()=>{
   })();
 
   loadAll().catch(e=>alert(e.message||e));
+
+  // Manejadores para la barra de navegación móvil
+  const navCatalog = document.getElementById('navCatalog');
+  const navTimer = document.getElementById('navTimer');
+  const navShop = document.getElementById('navShop');
+  if(navCatalog) navCatalog.addEventListener('click', ()=>{
+    const panel = document.getElementById('catalogPanel');
+    if(panel) panel.classList.toggle('hidden');
+    // mostrar acciones accesibles
+    catalogPanelOpen = !panel.classList.contains('hidden');
+  });
+  if(navTimer) navTimer.addEventListener('click', ()=>{
+    // Hacer scroll suave al temporizador para usuarios móviles
+    const t = document.querySelector('.timer');
+    if(t) t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+  if(navShop) navShop.addEventListener('click', ()=>{
+    const t = document.querySelector('.timer');
+    const p = document.querySelector('#catalogPanel');
+    if(p && p.classList.contains('hidden')){
+      // abrir catálogo si está cerrado
+      p.classList.remove('hidden');
+      catalogPanelOpen = true;
+    } else if(p){
+      // si ya abierto, mostrar sección de ofertas (scroll arriba)
+      p.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  });
+
 });
 
 // Mejorar manejadores de inicio/cancelación: evitar doble clic
