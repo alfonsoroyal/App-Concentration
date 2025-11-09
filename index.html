@@ -17,8 +17,11 @@
 </header>
 
 <nav id="catalogPanel" class="panel hidden">
-  <h2>Catálogo</h2>
-  <button id="closeCatalogBtn" aria-label="Cerrar catálogo" style="position:absolute;right:12px;top:12px;background:transparent;border:none;color:#ccc;font-size:20px;">✕</button>
+  <div id="catalogHeader" style="position:relative;padding-bottom:8px;">
+    <button id="catalogBackBtn" aria-hidden="true" style="display:none;position:absolute;left:0;top:0;background:transparent;border:none;color:#ccc;font-size:18px;padding:8px;">← Volver</button>
+    <h2 style="text-align:center;margin:0;">Catálogo</h2>
+    <button id="closeCatalogBtn" aria-label="Cerrar catálogo" style="position:absolute;right:12px;top:0;background:transparent;border:none;color:#ccc;font-size:20px;">✕</button>
+  </div>
   <div id="catalogFilters" class="filters"></div>
   <div id="catalogGrid" class="grid"></div>
 </nav>

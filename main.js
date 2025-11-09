@@ -360,112 +360,189 @@ function buildFilters(){
   slots.sort().forEach(s=> filters.appendChild(mkBtn(s, s)));
 }
 
-function renderCatalog(){
-  const container = document.getElementById('catalogGrid');
-  container.innerHTML = '';
-  // filtrar por slot si aplica
-  const itemsFiltered = currentFilter==='all' ? state.catalog : state.catalog.filter(i=>i.slot===currentFilter);
-  // Agrupar por categoría
-  const groups = new Map();
-  for(const item of itemsFiltered){
-    const cat = item.category || 'Otros';
-    if(!groups.has(cat)) groups.set(cat, []);
-    groups.get(cat).push(item);
-  }
-  // Limpiar categorías obsoletas del set
-  const existingCats = new Set(groups.keys());
-  for(const cat of Array.from(openCategories)){
-    if(!existingCats.has(cat)) openCategories.delete(cat);
-  }
-  const cats = Array.from(groups.keys()).sort();
-  if(cats.length===0){
-    const p = document.createElement('p');
-    p.textContent = 'No hay elementos para este filtro.';
-    container.appendChild(p);
-    return;
-  }
-  const layoutClass = currentFilter==='all' ? 'row' : 'grid';
-  cats.forEach(cat =>{
-    const details = document.createElement('details');
-    details.className = 'cat';
-    details.dataset.cat = cat;
-    const isOpen = openCategories.has(cat);
-    if(isOpen) {
-      details.open = true; // restaurar estado
-      if(currentFilter==='all') details.classList.add('expanded');
-    }
-    details.addEventListener('toggle', ()=>{
-      if(details.open){
-        openCategories.add(cat);
-        if(currentFilter==='all'){
-          // marcar expandida y cerrar las demás
-          details.classList.add('expanded');
-          const all = container.querySelectorAll('details.cat');
-          all.forEach(other=>{
-            if(other!==details){
-              other.open = false;
-              other.classList.remove('expanded');
-              if(other.dataset.cat) openCategories.delete(other.dataset.cat);
-            }
-          });
-        }
-      } else {
-        openCategories.delete(cat);
-        details.classList.remove('expanded');
-      }
-    });
-    const summary = document.createElement('summary');
-    const items = groups.get(cat);
-    summary.textContent = `${cat} (${items.length})`;
-    const wrap = document.createElement('div');
-    wrap.className = `cat-items ${layoutClass}`;
-    items.forEach(item =>{
-      const card = document.createElement('div');
-      card.className='card';
-      card.innerHTML = `
-        <img src="${item.image}" alt="${item.name}"/>
-        <div class="meta">
-          <div>
-            <div>${item.name}</div>
-            <div class="slot-name">${item.slot}</div>
-          </div>
-            <div>${item.cost} pt</div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-          <button data-act="preview" data-slot="${item.slot}" data-id="${item.id}">Ver</button>
-          <button data-act="buy" data-slot="${item.slot}" data-id="${item.id}">Comprar</button>
-        </div>`;
-      wrap.appendChild(card);
-    });
-    details.appendChild(summary);
-    details.appendChild(wrap);
-    container.appendChild(details);
+function showCatalogCategories(){
+  const filters = document.getElementById('catalogFilters');
+  const grid = document.getElementById('catalogGrid');
+  const backBtn = document.getElementById('catalogBackBtn');
+  backBtn.style.display = 'none';
+  filters.style.display = 'flex';
+  grid.innerHTML = '';
+  // construir botones por slot
+  const slots = Array.from(new Set(state.catalog.map(i=>i.slot))).sort();
+  const wrap = document.createElement('div');
+  wrap.className = 'catalog-categories';
+  slots.forEach(s=>{
+    const b = document.createElement('button');
+    b.textContent = s;
+    b.dataset.slot = s;
+    b.onclick = ()=> showCatalogCategory(s);
+    wrap.appendChild(b);
   });
-
-  container.onclick = async (e)=>{
-    const btn = e.target.closest('button');
-    if(!btn) return;
-    const { act, slot, id } = btn.dataset;
-    try{
-      if(act==='preview'){
-        const { preview } = await postJSON('/api/preview', { slot, itemId:id });
-        openPreview(preview, slot);
-      } else if(act==='buy'){
-        const res = await postJSON('/api/purchase', { slot, itemId:id });
-        state.points = res.points;
-        state.house.placed = res.placed;
-        renderPoints();
-        renderHouse();
-        // En móvil cerrar panel para evitar scroll adicional
-        if(window.matchMedia('(max-width:600px)').matches){
-          const panel = document.getElementById('catalogPanel');
-          if(panel) panel.classList.add('hidden');
-          catalogPanelOpen = false;
-        }
-      }
-    }catch(err){ alert(err.message||err); }
-  };
+  grid.appendChild(wrap);
 }
+
+function showCatalogCategory(slot){
+  const filters = document.getElementById('catalogFilters');
+  const grid = document.getElementById('catalogGrid');
+  const backBtn = document.getElementById('catalogBackBtn');
+  // mostrar back
+  backBtn.style.display = 'inline-block';
+  filters.style.display = 'none';
+  grid.innerHTML = '';
+  const page = document.createElement('div');
+  page.className = 'catalog-page';
+  const title = document.createElement('h3');
+  title.textContent = slot;
+  title.style.textAlign = 'center';
+  page.appendChild(title);
+  const storeGrid = document.createElement('div');
+  storeGrid.className = 'store-grid';
+  const items = state.catalog.filter(i=>i.slot===slot);
+  if(items.length===0){
+    const p = document.createElement('p'); p.textContent = 'No hay elementos.'; page.appendChild(p);
+  }
+  items.forEach(item=>{
+    const card = document.createElement('div'); card.className='card';
+    card.innerHTML = `
+      <img src="${item.image}" alt="${item.name}"/>
+      <div class="meta">
+        <div>
+          <div class="item-name">${item.name}</div>
+          <div class="slot-name">${item.slot}</div>
+        </div>
+        <div class="price">${item.cost} pt</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button data-act="preview" data-slot="${item.slot}" data-id="${item.id}">Ver</button>
+        <button data-act="buy" data-slot="${item.slot}" data-id="${item.id}">Comprar</button>
+      </div>`;
+    storeGrid.appendChild(card);
+  });
+  page.appendChild(storeGrid);
+  grid.appendChild(page);
+  // back handler
+  backBtn.onclick = ()=>{ showCatalogCategories(); };
+  // ensure focus/top
+  if(window.matchMedia('(max-width:600px)').matches){ setTimeout(()=>{ grid.scrollTo({ top:0, behavior:'smooth' }); }, 40); }
+}
+
+// Reemplazamos renderCatalog por una llamada a showCatalogCategories (vista inicial)
+function renderCatalog(){
+  // Si se está filtrando por slot específico (currentFilter != 'all') mostrar esa categoría
+  if(currentFilter && currentFilter !== 'all'){
+    showCatalogCategory(currentFilter);
+  } else {
+    showCatalogCategories();
+  }
+}
+
+// Ajustes en el click de items en grid: el container onclick maneja buy/preview ya
+// function renderCatalog(){
+//   const container = document.getElementById('catalogGrid');
+//   container.innerHTML = '';
+//   // filtrar por slot si aplica
+//   const itemsFiltered = currentFilter==='all' ? state.catalog : state.catalog.filter(i=>i.slot===currentFilter);
+//   // Agrupar por categoría
+//   const groups = new Map();
+//   for(const item of itemsFiltered){
+//     const cat = item.category || 'Otros';
+//     if(!groups.has(cat)) groups.set(cat, []);
+//     groups.get(cat).push(item);
+//   }
+//   // Limpiar categorías obsoletas del set
+//   const existingCats = new Set(groups.keys());
+//   for(const cat of Array.from(openCategories)){
+//     if(!existingCats.has(cat)) openCategories.delete(cat);
+//   }
+//   const cats = Array.from(groups.keys()).sort();
+//   if(cats.length===0){
+//     const p = document.createElement('p');
+//     p.textContent = 'No hay elementos para este filtro.';
+//     container.appendChild(p);
+//     return;
+//   }
+//   const layoutClass = currentFilter==='all' ? 'row' : 'grid';
+//   cats.forEach(cat =>{
+//     const details = document.createElement('details');
+//     details.className = 'cat';
+//     details.dataset.cat = cat;
+//     const isOpen = openCategories.has(cat);
+//     if(isOpen) {
+//       details.open = true; // restaurar estado
+//       if(currentFilter==='all') details.classList.add('expanded');
+//     }
+//     details.addEventListener('toggle', ()=>{
+//       if(details.open){
+//         openCategories.add(cat);
+//         if(currentFilter==='all'){
+//           // marcar expandida y cerrar las demás
+//           details.classList.add('expanded');
+//           const all = container.querySelectorAll('details.cat');
+//           all.forEach(other=>{
+//             if(other!==details){
+//               other.open = false;
+//               other.classList.remove('expanded');
+//               if(other.dataset.cat) openCategories.delete(other.dataset.cat);
+//             }
+//           });
+//         }
+//       } else {
+//         openCategories.delete(cat);
+//         details.classList.remove('expanded');
+//       }
+//     });
+//     const summary = document.createElement('summary');
+//     const items = groups.get(cat);
+//     summary.textContent = `${cat} (${items.length})`;
+//     const wrap = document.createElement('div');
+//     wrap.className = `cat-items ${layoutClass}`;
+//     items.forEach(item =>{
+//       const card = document.createElement('div');
+//       card.className='card';
+//       card.innerHTML = `
+//         <img src="${item.image}" alt="${item.name}"/>
+//         <div class="meta">
+//           <div>
+//             <div>${item.name}</div>
+//             <div class="slot-name">${item.slot}</div>
+//           </div>
+//             <div>${item.cost} pt</div>
+//         </div>
+//         <div style="display:flex;gap:8px;margin-top:8px;">
+//           <button data-act="preview" data-slot="${item.slot}" data-id="${item.id}">Ver</button>
+//           <button data-act="buy" data-slot="${item.slot}" data-id="${item.id}">Comprar</button>
+//         </div>`;
+//       wrap.appendChild(card);
+//     });
+//     details.appendChild(summary);
+//     details.appendChild(wrap);
+//     container.appendChild(details);
+//   });
+
+//   container.onclick = async (e)=>{
+//     const btn = e.target.closest('button');
+//     if(!btn) return;
+//     const { act, slot, id } = btn.dataset;
+//     try{
+//       if(act==='preview'){
+//         const { preview } = await postJSON('/api/preview', { slot, itemId:id });
+//         openPreview(preview, slot);
+//       } else if(act==='buy'){
+//         const res = await postJSON('/api/purchase', { slot, itemId:id });
+//         state.points = res.points;
+//         state.house.placed = res.placed;
+//         renderPoints();
+//         renderHouse();
+//         // En móvil cerrar panel para evitar scroll adicional
+//         if(window.matchMedia('(max-width:600px)').matches){
+//           const panel = document.getElementById('catalogPanel');
+//           if(panel) panel.classList.add('hidden');
+//           catalogPanelOpen = false;
+//         }
+//       }
+//     }catch(err){ alert(err.message||err); }
+//   };
+// }
 
 function openPreview(item, slot){
   $('#previewTitle').textContent = item.name;
@@ -678,3 +755,38 @@ function renderHouse(){
     host.appendChild(div);
   }
 }
+
+// Global handler para clicks dentro del grid del catálogo (tanto categorías como tienda)
+document.addEventListener('click', async (e)=>{
+  const grid = document.getElementById('catalogGrid');
+  if(!grid) return;
+  if(!grid.contains(e.target)) return;
+  const btn = e.target.closest('button');
+  if(!btn) return;
+  const act = btn.dataset.act;
+  const slot = btn.dataset.slot;
+  const id = btn.dataset.id;
+  try{
+    if(act === 'preview'){
+      const { preview } = await postJSON('/api/preview', { slot, itemId: id });
+      openPreview(preview, slot);
+    } else if(act === 'buy'){
+      const res = await postJSON('/api/purchase', { slot, itemId: id });
+      state.points = res.points;
+      state.house.placed = res.placed;
+      renderPoints();
+      renderHouse();
+      // cerrar en móvil para evitar scroll largo
+      if(window.matchMedia('(max-width:600px)').matches){
+        const panel = document.getElementById('catalogPanel');
+        if(panel) panel.classList.add('hidden');
+        catalogPanelOpen = false;
+      }
+    } else if(btn.dataset.slot && !act){
+      // Si el click fue sobre un botón de categoría creado en showCatalogCategories
+      const s = btn.dataset.slot;
+      if(s) showCatalogCategory(s);
+    }
+  }catch(err){ alert(err.message || err); }
+});
+

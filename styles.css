@@ -58,3 +58,29 @@ button, .filters button, .card button{touch-action:manipulation}
   header h1{font-size:16px}
   .controls input[type=number]{width:70px}
 }
+
+/* Estilos para vista 'tienda' dentro del panel del catálogo */
+#catalogPanel .catalog-page{display:block}
+#catalogPanel .catalog-categories{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0}
+#catalogPanel .catalog-categories button{padding:10px 12px;border-radius:8px;background:#1b1f26;border:1px solid #2b2f37;color:#fff;cursor:pointer}
+#catalogPanel .catalog-page .store-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));padding:6px}
+#catalogPanel .store-grid .card{display:flex;flex-direction:column;gap:8px;padding:10px}
+#catalogPanel .card .meta{font-size:14px}
+
+/* Responsive tuning for store grid: 4 cols desktop, 3 cols laptop, 2 cols tablet, 1 col mobile */
+@media (min-width:1100px){
+  #catalogPanel .store-grid{grid-template-columns:repeat(4,1fr)}
+}
+@media (min-width:860px) and (max-width:1099px){
+  #catalogPanel .store-grid{grid-template-columns:repeat(3,1fr)}
+}
+@media (min-width:600px) and (max-width:859px){
+  #catalogPanel .store-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:599px){
+  #catalogPanel .store-grid{grid-template-columns:repeat(1,1fr)}
+}
+
+/* Estilo del botón volver en header cuando se muestra categoría */
+#catalogBackBtn{background:transparent;border:none;color:#9aa3b2;cursor:pointer}
+#catalogHeader h2{font-size:20px}
