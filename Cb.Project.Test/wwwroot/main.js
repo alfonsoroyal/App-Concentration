@@ -30,8 +30,8 @@ const LocalStore = {
   seed() {
     const base = '/img/';
     const catalog = [
-      { id:'sofa_clasico', slot:'sofa', category:'Sala', name:'Sof clásico', cost:30, image: base+'sofa1.svg' },
-      { id:'sofa_moderno', slot:'sofa', category:'Sala', name:'Sof moderno', cost:45, image: base+'sofa2.svg' },
+      { id:'sofa_clasico', slot:'sofa', category:'Sala', name:'Sofá clásico', cost:30, image: base+'sofa1.svg' },
+      { id:'sofa_moderno', slot:'sofa', category:'Sala', name:'Sofá moderno', cost:45, image: base+'sofa2.svg' },
       { id:'mesa_roble', slot:'mesa', category:'Sala', name:'Mesa roble', cost:25, image: base+'mesa1.svg' },
       { id:'mesa_vidrio', slot:'mesa', category:'Sala', name:'Mesa vidrio', cost:35, image: base+'mesa2.svg' },
       { id:'lampara_pie', slot:'lampara', category:'Iluminación', name:'Lámpara pie', cost:20, image: base+'lampara1.svg' },
