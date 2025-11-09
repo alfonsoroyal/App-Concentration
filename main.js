@@ -42,15 +42,39 @@ const LocalStore = {
     const catalog = [
       { id:'sofa_clasico', slot:'sofa', category:'Sala', name:'Sofá clásico', cost:30, image: base+'sofa1.svg' },
       { id:'sofa_moderno', slot:'sofa', category:'Sala', name:'Sofá moderno', cost:45, image: base+'sofa2.svg' },
+      { id:'sofa_combo', slot:'sofa', category:'Sala', name:'Sofá 3 plazas', cost:60, image: base+'sofa2.svg' },
       { id:'mesa_roble', slot:'mesa', category:'Sala', name:'Mesa roble', cost:25, image: base+'mesa1.svg' },
       { id:'mesa_vidrio', slot:'mesa', category:'Sala', name:'Mesa vidrio', cost:35, image: base+'mesa2.svg' },
+      { id:'mesa_cafe', slot:'mesa', category:'Sala', name:'Mesa de café', cost:18, image: base+'mesa1.svg' },
       { id:'lampara_pie', slot:'lampara', category:'Iluminación', name:'Lámpara pie', cost:20, image: base+'lampara1.svg' },
       { id:'lampara_mod', slot:'lampara', category:'Iluminación', name:'Lámpara moderna', cost:32, image: base+'lampara_mod.svg' },
+      { id:'lampara_colgante', slot:'lampara', category:'Iluminación', name:'Lámpara colgante', cost:28, image: base+'lampara_mod.svg' },
       { id:'cocina_mueble_blanco', slot:'cocina_mueble', category:'Cocina', name:'Mueble blanco', cost:40, image: base+'cocina_mueble_blanco.svg' },
       { id:'cocina_mueble_madera', slot:'cocina_mueble', category:'Cocina', name:'Mueble madera', cost:42, image: base+'cocina_mueble_madera.svg' },
-      // ... puedes añadir más items según el catálogo original ...
+      { id:'frigo_acero', slot:'cocina_frigorifico', category:'Cocina', name:'Frigorífico acero', cost:50, image: base+'frigo_acero.svg' },
+      { id:'frigo_blanco', slot:'cocina_frigorifico', category:'Cocina', name:'Frigorífico blanco', cost:46, image: base+'frigo_blanco.svg' },
+      { id:'horno_inox', slot:'cocina_horno', category:'Cocina', name:'Horno inox', cost:30, image: base+'horno_inox.svg' },
+      { id:'horno_negro', slot:'cocina_horno', category:'Cocina', name:'Horno negro', cost:28, image: base+'horno_negro.svg' },
+      { id:'alfombra_moderna', slot:'alfombra', category:'Decoración', name:'Alfombra moderna', cost:22, image: base+'alfombra_moderna.svg' },
+      { id:'alfombra_roja', slot:'alfombra', category:'Decoración', name:'Alfombra roja', cost:24, image: base+'alfombra_roja.svg' },
+      { id:'cuadro_montana', slot:'cuadro', category:'Decoración', name:'Cuadro montaña', cost:12, image: base+'cuadro_montana.svg' },
+      { id:'cuadro1', slot:'cuadro', category:'Decoración', name:'Cuadro abstracto', cost:15, image: base+'cuadro1.svg' },
+      { id:'estanteria_blanca', slot:'estanteria', category:'Almacenaje', name:'Estantería blanca', cost:35, image: base+'estanteria_blanca.svg' },
+      { id:'estanteria_madera', slot:'estanteria', category:'Almacenaje', name:'Estantería madera', cost:38, image: base+'estanteria_madera.svg' },
+      { id:'planta_alta', slot:'planta_suelo', category:'Plantas', name:'Planta alta', cost:10, image: base+'planta_alta.svg' },
+      { id:'planta_baja', slot:'planta_suelo', category:'Plantas', name:'Planta baja', cost:8, image: base+'planta_baja.svg' },
+      { id:'planta_colgante', slot:'planta_colgante', category:'Plantas', name:'Planta colgante', cost:14, image: base+'planta_colgante.svg' },
+      { id:'sofa_alt', slot:'sofa', category:'Sala', name:'Sofá alt', cost:48, image: base+'sofa1.svg' },
+      { id:'mesa_larga', slot:'mesa', category:'Comedor', name:'Mesa larga', cost:55, image: base+'mesa2.svg' },
+      { id:'lampara_decor', slot:'lampara', category:'Iluminación', name:'Lámpara decorativa', cost:26, image: base+'lampara1.svg' },
+      // duplicados para rellenar el catálogo
+      { id:'sofa_extra1', slot:'sofa', category:'Sala', name:'Sofá vintage', cost:34, image: base+'sofa1.svg' },
+      { id:'sofa_extra2', slot:'sofa', category:'Sala', name:'Sofá minimal', cost:40, image: base+'sofa2.svg' },
+      { id:'mesa_extra1', slot:'mesa', category:'Sala', name:'Mesa auxiliar', cost:15, image: base+'mesa1.svg' },
+      { id:'alfombra_extra1', slot:'alfombra', category:'Decoración', name:'Alfombra clásica', cost:20, image: base+'alfombra_moderna.svg' },
+      { id:'cuadro_extra1', slot:'cuadro', category:'Decoración', name:'Cuadro paisaje', cost:18, image: base+'cuadro1.svg' }
     ];
-    const slots = ["sofa","mesa","lampara","cuadro","cocina_mueble","cocina_frigorifico","cocina_horno","planta_suelo","planta_colgante","alfombra","estanteria"];
+    const slots = ["all","sofa","mesa","lampara","cuadro","cocina_mueble","cocina_frigorifico","cocina_horno","planta_suelo","planta_colgante","alfombra","estanteria"];
     const now = new Date().toISOString();
     return {
       points: 0,
@@ -63,13 +87,28 @@ const LocalStore = {
   },
   initIfNeeded() {
     let st = this.load();
+    const seedData = this.seed();
     if (!st) {
-      st = this.seed();
+      st = seedData;
       this.save(st);
     } else {
-      // ensure catalog and slots exist
-      if(!Array.isArray(st.catalog) || st.catalog.length===0) st.catalog = this.seed().catalog;
-      if(!st.house || !Array.isArray(st.house.slots)) st.house = this.seed().house;
+      // ensure catalog and slots exist - merge missing items by id
+      if(!Array.isArray(st.catalog) || st.catalog.length===0) st.catalog = seedData.catalog;
+      else {
+        const existingIds = new Set(st.catalog.map(i=>i.id));
+        const toAdd = seedData.catalog.filter(i=>!existingIds.has(i.id));
+        if(toAdd.length>0){
+          st.catalog = st.catalog.concat(toAdd);
+        }
+      }
+      if(!st.house || !Array.isArray(st.house.slots)) st.house = seedData.house;
+      else {
+        // ensure house slots include seed slots
+        const slotSet = new Set(st.house.slots || []);
+        for(const s of seedData.house.slots || []) slotSet.add(s);
+        st.house.slots = Array.from(slotSet);
+        st.house.placed = st.house.placed || {};
+      }
     }
     return st;
   },
@@ -351,7 +390,7 @@ function buildFilters(){
     const b = document.createElement('button');
     b.textContent = label;
     b.dataset.f = id;
-    if(id===currentFilter) b.classList.add('active');
+    ifid===currentFilter) b.classList.add('active');
     b.onclick = ()=>{ currentFilter = id; buildFilters(); renderCatalog(); };
     return b;
   };
@@ -369,8 +408,14 @@ function showCatalogCategories(){
   grid.innerHTML = '';
   // construir botones por slot
   const slots = Array.from(new Set(state.catalog.map(i=>i.slot))).sort();
+  // añadir opción 'all' para ver todo
   const wrap = document.createElement('div');
   wrap.className = 'catalog-categories';
+  const allBtn = document.createElement('button');
+  allBtn.textContent = 'Todos';
+  allBtn.dataset.slot = 'all';
+  allBtn.onclick = ()=> showCatalogCategory('all');
+  wrap.appendChild(allBtn);
   slots.forEach(s=>{
     const b = document.createElement('button');
     b.textContent = s;
@@ -392,12 +437,12 @@ function showCatalogCategory(slot){
   const page = document.createElement('div');
   page.className = 'catalog-page';
   const title = document.createElement('h3');
-  title.textContent = slot;
+  title.textContent = slot === 'all' ? 'Todos los productos' : slot;
   title.style.textAlign = 'center';
   page.appendChild(title);
   const storeGrid = document.createElement('div');
   storeGrid.className = 'store-grid';
-  const items = state.catalog.filter(i=>i.slot===slot);
+  const items = slot === 'all' ? state.catalog : state.catalog.filter(i=>i.slot===slot);
   if(items.length===0){
     const p = document.createElement('p'); p.textContent = 'No hay elementos.'; page.appendChild(p);
   }
@@ -661,6 +706,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   });
 
+  const resetBtn = document.getElementById('resetStateBtn');
+  if(resetBtn) resetBtn.addEventListener('click', ()=>{
+    if(confirm('Borrar estado local y recargar? Esto restablecerá puntos y colocados.')){
+      try{ localStorage.removeItem(LOCAL_KEY); }catch(e){}
+      location.reload();
+    }
+  });
+
 });
 
 // Mejorar manejadores de inicio/cancelación: evitar doble clic
@@ -789,4 +842,3 @@ document.addEventListener('click', async (e)=>{
     }
   }catch(err){ alert(err.message || err); }
 });
-
