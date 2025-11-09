@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Casa & Temporizador</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header>
+  <h1>Tu Casa</h1>
+  <div class="top-actions">
+    <div id="points">Puntos: <span id="pointsValue">0</span></div>
+    <button id="toggleCatalogBtn" class="secondary">Catálogo</button>
+  </div>
+</header>
+
+<nav id="catalogPanel" class="panel hidden">
+  <h2>Catálogo</h2>
+  <div id="catalogFilters" class="filters"></div>
+  <div id="catalogGrid" class="grid"></div>
+</nav>
+
+<main>
+  <section class="timer">
+    <h2>Temporizador</h2>
+    <div class="controls">
+      <label style="display:flex;align-items:center;gap:4px;">
+        <span>Duración</span>
+        <input type="number" id="timeValue" min="1" step="1" value="25"/>
+      </label>
+      <label style="display:flex;align-items:center;gap:4px;">
+        <span>Unidad</span>
+        <select id="timeUnit">
+          <option value="minutes">minutos</option>
+          <option value="hours">horas</option>
+        </select>
+      </label>
+      <button id="startBtn">Iniciar</button>
+      <button id="cancelBtn">Cancelar</button>
+    </div>
+    <div id="status"></div>
+  </section>
+
+  <section class="house-wrapper">
+    <div id="house" class="house">
+      <div id="houseSlots"></div>
+    </div>
+  </section>
+
+  <dialog id="previewDialog">
+    <form method="dialog">
+      <h3 id="previewTitle"></h3>
+      <img id="previewImg" alt="preview" src="img/house-bg.svg"/>
+      <p id="previewCost"></p>
+      <div class="dialog-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button value="cancel">Cancelar</button>
+        <button id="buyBtn" value="default">Comprar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="claimDialog">
+    <form method="dialog" class="claim-form">
+      <h2>Tiempo completado</h2>
+      <p>Has ganado <span id="claimReward">0</span> puntos.</p>
+      <div class="dialog-actions" style="display:flex;justify-content:flex-end;gap:8px;">
+        <button id="claimConfirm" value="default">Reclamar</button>
+      </div>
+    </form>
+  </dialog>
+</main>
+
+<script defer src="main.js?v=20251107"></script>
+</body>
+</html>

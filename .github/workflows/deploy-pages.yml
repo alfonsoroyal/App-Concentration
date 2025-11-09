@@ -16,10 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Ensure .nojekyll to prevent GitHub Pages Jekyll build
+        run: |
+          touch .nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           # Prefer user-provided PAT (GH_PAGES_DEPLOY_TOKEN) if present, otherwise fallback to the automatic GITHUB_TOKEN
           github_token: ${{ secrets.GH_PAGES_DEPLOY_TOKEN || github.token }}
           publish_branch: gh-pages
-          publish_dir: ./Cb.Project.Test/wwwroot
+          publish_dir: ./
