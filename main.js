@@ -762,34 +762,81 @@ function setupCatalogToggle(){
   });
 }
 
+// Mapeo de slots hacia caras del cubo 3D
+const FACE_MAP = {
+  sofa: 'front',
+  mesa: 'front',
+  alfombra: 'front',
+  planta_suelo: 'front',
+  estanteria: 'right',
+  cuadro: 'back',
+  cocina_mueble: 'right',
+  cocina_frigorifico: 'right',
+  cocina_horno: 'right',
+  lampara: 'top',
+  planta_colgante: 'top'
+};
+
 function renderHouse(){
-  const host = document.getElementById('houseSlots');
-  if(!host) return;
-  host.innerHTML='';
+  const hostContainer = document.getElementById('houseSlots');
+  const houseEl = document.getElementById('house');
+  if(!houseEl || !hostContainer) return;
+
+  // Crear (o reutilizar) la escena del cubo dentro de #houseSlots
+  let cube = hostContainer.querySelector('.cube');
+  if(!cube){
+    // limpiar el contenedor y crear estructura
+    hostContainer.innerHTML = '';
+    cube = document.createElement('div'); cube.className = 'cube';
+    // crear caras base
+    const faceNames = ['front','back','left','right','top','floor'];
+    for(const f of faceNames){
+      const face = document.createElement('div');
+      face.className = `face ${f}`;
+      // contenedor para slots (posicionados absolutamente dentro de la cara)
+      const slotLayer = document.createElement('div');
+      slotLayer.className = 'face-slots';
+      slotLayer.style.position = 'relative';
+      slotLayer.style.width = '100%';
+      slotLayer.style.height = '100%';
+      face.appendChild(slotLayer);
+      cube.appendChild(face);
+    }
+    hostContainer.appendChild(cube);
+  } else {
+    // limpiar capas de slots
+    cube.querySelectorAll('.face-slots').forEach(n=> n.innerHTML = '');
+  }
+
   const slots = state.house?.slots || [];
   const placed = state.house?.placed || {};
   for(const slot of slots){
-    const div = document.createElement('div');
-    div.className = 'slot';
-    div.dataset.slot = slot;
+    const slotEl = document.createElement('div');
+    slotEl.className = 'slot';
+    slotEl.dataset.slot = slot;
+    // label (oculto por defecto)
+    const label = document.createElement('div'); label.className='slot-name'; label.textContent = slot;
+
     const itemId = placed[slot];
-    const label = document.createElement('div');
-    label.className='slot-name';
-    label.textContent = slot;
     if(itemId){
       const item = state.catalog.find(c=>c.id===itemId);
       if(item){
-        const img = document.createElement('img');
-        img.src = item.image;
-        img.alt = item.name;
-        div.appendChild(img);
-        div.classList.add('filled');
+        const wrapper = document.createElement('div'); wrapper.className = 'object-3d';
+        const img = document.createElement('img'); img.src = item.image; img.alt = item.name;
+        wrapper.appendChild(img);
+        slotEl.appendChild(wrapper);
+        slotEl.classList.add('filled');
       }
     } else {
-      div.classList.add('empty');
+      slotEl.classList.add('empty');
     }
-    div.appendChild(label);
-    host.appendChild(div);
+    slotEl.appendChild(label);
+
+    const faceName = FACE_MAP[slot] || 'back';
+    const faceSlots = cube.querySelector(`.face.${faceName} .face-slots`);
+    // si no existe la cara, colocalo en back
+    const target = faceSlots || cube.querySelector('.face.back .face-slots');
+    target.appendChild(slotEl);
   }
 }
 
@@ -1001,5 +1048,64 @@ document.addEventListener('click', async (e)=>{
     }
   });
 
-})();
+  // Rotación interactiva del cubo: pointer drag para girar la escena
+  let isRotating = false;
+  let rotateStart = { x: 0, y: 0 };
+  let rotateAngles = { x: 12, y: -18 }; // valores iniciales que coinciden con CSS
+  const cubeEl = houseEl.querySelector('.cube') || document.querySelector('.house .cube');
 
+  function applyCubeTransform(xDeg, yDeg){
+    if(!cubeEl) return;
+    cubeEl.style.transform = `rotateX(${xDeg}deg) rotateY(${yDeg}deg)`;
+  }
+  // aplicar transform inicial
+  applyCubeTransform(rotateAngles.x, rotateAngles.y);
+
+  houseEl.addEventListener('pointerdown', (ev)=>{
+    // evitar iniciar rotación si el target es un botón dentro el catálogo u otro control
+    if(ev.target.closest('button') || ev.target.closest('a')) return;
+    isRotating = true;
+    rotateStart.x = ev.clientY;
+    rotateStart.y = ev.clientX;
+    // desactivar parallax mientras se rota
+    houseEl.removeEventListener('mousemove', onMove);
+    document.documentElement.style.cursor = 'grabbing';
+    window.addEventListener('pointermove', onRotateMove);
+    window.addEventListener('pointerup', onRotateEnd, { once: true });
+  });
+
+  function onRotateMove(ev){
+    if(!isRotating) return;
+    const dx = ev.clientX - rotateStart.y;
+    const dy = ev.clientY - rotateStart.x;
+    // sensibilidad
+    const newY = rotateAngles.y + dx * 0.2;
+    const newX = Math.max(-50, Math.min(50, rotateAngles.x - dy * 0.15));
+    applyCubeTransform(newX, newY);
+  }
+
+  function onRotateEnd(ev){
+    if(!isRotating) return;
+    // actualizar ángulos actuales basados en posición final del cube transform
+    const el = cubeEl;
+    // extraer valores usados (si fueron aplicados inline)
+    // fallback: calcular desde deltas
+    // Guardamos los últimos aplicados
+    // parse transform from style
+    const style = el && el.style && el.style.transform;
+    if(style){
+      const mX = style.match(/rotateX\(([-0-9.]+)deg\)/);
+      const mY = style.match(/rotateY\(([-0-9.]+)deg\)/);
+      if(mX) rotateAngles.x = parseFloat(mX[1]);
+      if(mY) rotateAngles.y = parseFloat(mY[1]);
+    }
+    isRotating = false;
+    document.documentElement.style.cursor = '';
+    // reactivar parallax
+    if(window.matchMedia('(hover:hover) and (pointer: fine)').matches){
+      houseEl.addEventListener('mousemove', onMove);
+    }
+    window.removeEventListener('pointermove', onRotateMove);
+  }
+
+})();
