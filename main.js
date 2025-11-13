@@ -762,81 +762,35 @@ function setupCatalogToggle(){
   });
 }
 
-// Mapeo de slots hacia caras del cubo 3D
-const FACE_MAP = {
-  sofa: 'front',
-  mesa: 'front',
-  alfombra: 'front',
-  planta_suelo: 'front',
-  estanteria: 'right',
-  cuadro: 'back',
-  cocina_mueble: 'right',
-  cocina_frigorifico: 'right',
-  cocina_horno: 'right',
-  lampara: 'top',
-  planta_colgante: 'top'
-};
-
+// Restaurar renderHouse 2D (versión simple anterior)
 function renderHouse(){
-  const hostContainer = document.getElementById('houseSlots');
-  const houseEl = document.getElementById('house');
-  if(!houseEl || !hostContainer) return;
-
-  // Crear (o reutilizar) la escena del cubo dentro de #houseSlots
-  let cube = hostContainer.querySelector('.cube');
-  if(!cube){
-    // limpiar el contenedor y crear estructura
-    hostContainer.innerHTML = '';
-    cube = document.createElement('div'); cube.className = 'cube';
-    // crear caras base
-    const faceNames = ['front','back','left','right','top','floor'];
-    for(const f of faceNames){
-      const face = document.createElement('div');
-      face.className = `face ${f}`;
-      // contenedor para slots (posicionados absolutamente dentro de la cara)
-      const slotLayer = document.createElement('div');
-      slotLayer.className = 'face-slots';
-      slotLayer.style.position = 'relative';
-      slotLayer.style.width = '100%';
-      slotLayer.style.height = '100%';
-      face.appendChild(slotLayer);
-      cube.appendChild(face);
-    }
-    hostContainer.appendChild(cube);
-  } else {
-    // limpiar capas de slots
-    cube.querySelectorAll('.face-slots').forEach(n=> n.innerHTML = '');
-  }
-
+  const host = document.getElementById('houseSlots');
+  if(!host) return;
+  host.innerHTML='';
   const slots = state.house?.slots || [];
   const placed = state.house?.placed || {};
   for(const slot of slots){
-    const slotEl = document.createElement('div');
-    slotEl.className = 'slot';
-    slotEl.dataset.slot = slot;
-    // label (oculto por defecto)
-    const label = document.createElement('div'); label.className='slot-name'; label.textContent = slot;
-
+    const div = document.createElement('div');
+    div.className = 'slot';
+    div.dataset.slot = slot;
     const itemId = placed[slot];
+    const label = document.createElement('div');
+    label.className='slot-name';
+    label.textContent = slot;
     if(itemId){
       const item = state.catalog.find(c=>c.id===itemId);
       if(item){
-        const wrapper = document.createElement('div'); wrapper.className = 'object-3d';
-        const img = document.createElement('img'); img.src = item.image; img.alt = item.name;
-        wrapper.appendChild(img);
-        slotEl.appendChild(wrapper);
-        slotEl.classList.add('filled');
+        const img = document.createElement('img');
+        img.src = item.image;
+        img.alt = item.name;
+        div.appendChild(img);
+        div.classList.add('filled');
       }
     } else {
-      slotEl.classList.add('empty');
+      div.classList.add('empty');
     }
-    slotEl.appendChild(label);
-
-    const faceName = FACE_MAP[slot] || 'back';
-    const faceSlots = cube.querySelector(`.face.${faceName} .face-slots`);
-    // si no existe la cara, colocalo en back
-    const target = faceSlots || cube.querySelector('.face.back .face-slots');
-    target.appendChild(slotEl);
+    div.appendChild(label);
+    host.appendChild(div);
   }
 }
 
@@ -874,238 +828,3 @@ document.addEventListener('click', async (e)=>{
   }catch(err){ alert(err.message || err); }
 });
 
-// --- Nuevas funciones: 3D parallax y Drag & Drop del catálogo a la casa ---
-(function enable3DEffectsAndDnD(){
-  const houseEl = document.querySelector('.house');
-  if(!houseEl) return;
-
-  // Parallax / inclinación según mouse (solo en escritorio)
-  let rafId = null;
-  const onMove = (e)=>{
-    const rect = houseEl.getBoundingClientRect();
-    const cx = rect.left + rect.width/2;
-    const cy = rect.top + rect.height/2;
-    const dx = (e.clientX - cx) / rect.width; // -0.5 .. 0.5
-    const dy = (e.clientY - cy) / rect.height;
-    const rotY = dx * 9; // degrees
-    const rotX = -dy * 7;
-    if(rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(()=>{
-      houseEl.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-      // subtle translateZ to enhance depth when moving
-      houseEl.style.transform += ` translateZ(0px)`;
-      houseEl.classList.add('show-3d');
-    });
-  };
-  const resetTransform = ()=>{
-    if(rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(()=>{ houseEl.style.transform = ''; houseEl.classList.remove('show-3d'); });
-  };
-
-  // Only attach on pointer move for non-touch devices
-  if(window.matchMedia('(hover:hover) and (pointer: fine)').matches){
-    houseEl.addEventListener('mousemove', onMove);
-    houseEl.addEventListener('mouseleave', resetTransform);
-  }
-
-  // Drag & Drop: soportar arrastrar desde la miniatura del catálogo
-  // Cuando se inicia un drag en el catálogo, creamos un ghost image y trackeamos el itemId
-  let draggingItem = null; // { id, slot, image }
-  let dragGhost = null;
-
-  function createGhost(imgSrc){
-    const g = document.createElement('img');
-    g.src = imgSrc;
-    g.style.position = 'fixed';
-    g.style.pointerEvents = 'none';
-    g.style.width = '120px';
-    g.style.height = '120px';
-    g.style.opacity = '0.92';
-    g.style.transform = 'translate(-50%,-50%) scale(1.05)';
-    g.style.zIndex = 9999;
-    document.body.appendChild(g);
-    return g;
-  }
-
-  // Start listening for dragstart events in the catalogGrid (delegation)
-  const catalogGrid = document.getElementById('catalogGrid');
-  if(catalogGrid){
-    catalogGrid.addEventListener('pointerdown', (ev)=>{
-      const btn = ev.target.closest('button');
-      if(!btn) return;
-      if(btn.dataset.act !== 'buy' && btn.dataset.act !== 'preview'){
-        // Some category button maybe; ignore
-        return;
-      }
-      // We'll treat pointerdown as potential drag start for long press or move
-      const card = btn.closest('.card');
-      if(!card) return;
-      const id = btn.dataset.id;
-      const slot = btn.dataset.slot;
-      const img = card.querySelector('img');
-      const imgSrc = img ? img.src : '';
-
-      const onPointerMove = (moveEv)=>{
-        // start dragging
-        draggingItem = { id, slot, image: imgSrc };
-        dragGhost = createGhost(imgSrc);
-        document.documentElement.classList.add('dragging-img');
-        updateGhostPosition(moveEv);
-        // add listeners globally
-        window.addEventListener('pointermove', updateGhostPosition);
-        window.addEventListener('pointerup', endPointerDrag);
-        // mark source card
-        card.classList.add('drag-source');
-        // remove this local listener
-        cleanup();
-      };
-
-      const cleanup = ()=>{
-        document.removeEventListener('pointermove', onPointerMove);
-        document.removeEventListener('pointerup', cleanup);
-      };
-
-      const cancelStart = ()=>{
-        cleanup();
-      };
-
-      // Small threshold: only if user actually moves pointer start drag
-      document.addEventListener('pointermove', onPointerMove, { once: true });
-      document.addEventListener('pointerup', cancelStart, { once: true });
-
-      function updateGhostPosition(ev){
-        if(!dragGhost) return;
-        dragGhost.style.left = ev.clientX + 'px';
-        dragGhost.style.top = ev.clientY + 'px';
-      }
-
-      function endPointerDrag(ev){
-        // determine drop target: find .slot under pointer
-        const el = document.elementFromPoint(ev.clientX, ev.clientY);
-        const slotEl = el ? el.closest('.slot') : null;
-        if(slotEl && draggingItem){
-          // Ensure the slot accepts the dragged item's slot type
-          const targetSlot = slotEl.dataset.slot;
-          // If type matches or targetSlot equals draggingItem.slot or target accepts 'all'
-          if(targetSlot === draggingItem.slot){
-            // Attempt purchase via API
-            postJSON('/api/purchase', { slot: targetSlot, itemId: draggingItem.id })
-              .then(res=>{
-                state.points = res.points;
-                state.house.placed = res.placed;
-                renderPoints();
-                renderHouse();
-              })
-              .catch(err=>{ alert(err.message || err); });
-          } else {
-            // show hint if mismatched
-            // briefly flash highlight in red
-            slotEl.classList.add('highlight');
-            setTimeout(()=> slotEl.classList.remove('highlight'), 700);
-          }
-        }
-        // cleanup
-        if(dragGhost && dragGhost.parentNode) dragGhost.parentNode.removeChild(dragGhost);
-        dragGhost = null; draggingItem = null;
-        document.documentElement.classList.remove('dragging-img');
-        window.removeEventListener('pointermove', updateGhostPosition);
-        window.removeEventListener('pointerup', endPointerDrag);
-        const cards = document.querySelectorAll('.card.drag-source');
-        cards.forEach(c=>c.classList.remove('drag-source'));
-      }
-
-    });
-  }
-
-  // Improve slot hover/drop visuals using pointerenter/leave
-  const host = document.getElementById('houseSlots');
-  if(host){
-    host.addEventListener('pointerenter', (e)=>{}, true);
-    host.addEventListener('pointerover', (e)=>{
-      const s = e.target.closest('.slot');
-      if(s && draggingItem) s.classList.add('highlight');
-    }, true);
-    host.addEventListener('pointerout', (e)=>{
-      const s = e.target.closest('.slot');
-      if(s) s.classList.remove('highlight');
-    }, true);
-  }
-
-  // Click on slot opens catalog and filters to that slot for quick placement
-  host && host.addEventListener('click', (ev)=>{
-    const slotEl = ev.target.closest('.slot');
-    if(!slotEl) return;
-    const slotType = slotEl.dataset.slot;
-    // open catalog and filter
-    const panel = document.getElementById('catalogPanel');
-    if(panel){
-      panel.classList.remove('hidden');
-      catalogPanelOpen = true;
-      currentFilter = slotType || 'all';
-      renderCatalog();
-      // scroll to top on mobile
-      if(window.matchMedia('(max-width:600px)').matches){ setTimeout(()=> panel.scrollTo({ top:0, behavior:'smooth' }), 60); }
-    }
-  });
-
-  // Rotación interactiva del cubo: pointer drag para girar la escena
-  let isRotating = false;
-  let rotateStart = { x: 0, y: 0 };
-  let rotateAngles = { x: 12, y: -18 }; // valores iniciales que coinciden con CSS
-  const cubeEl = houseEl.querySelector('.cube') || document.querySelector('.house .cube');
-
-  function applyCubeTransform(xDeg, yDeg){
-    if(!cubeEl) return;
-    cubeEl.style.transform = `rotateX(${xDeg}deg) rotateY(${yDeg}deg)`;
-  }
-  // aplicar transform inicial
-  applyCubeTransform(rotateAngles.x, rotateAngles.y);
-
-  houseEl.addEventListener('pointerdown', (ev)=>{
-    // evitar iniciar rotación si el target es un botón dentro el catálogo u otro control
-    if(ev.target.closest('button') || ev.target.closest('a')) return;
-    isRotating = true;
-    rotateStart.x = ev.clientY;
-    rotateStart.y = ev.clientX;
-    // desactivar parallax mientras se rota
-    houseEl.removeEventListener('mousemove', onMove);
-    document.documentElement.style.cursor = 'grabbing';
-    window.addEventListener('pointermove', onRotateMove);
-    window.addEventListener('pointerup', onRotateEnd, { once: true });
-  });
-
-  function onRotateMove(ev){
-    if(!isRotating) return;
-    const dx = ev.clientX - rotateStart.y;
-    const dy = ev.clientY - rotateStart.x;
-    // sensibilidad
-    const newY = rotateAngles.y + dx * 0.2;
-    const newX = Math.max(-50, Math.min(50, rotateAngles.x - dy * 0.15));
-    applyCubeTransform(newX, newY);
-  }
-
-  function onRotateEnd(ev){
-    if(!isRotating) return;
-    // actualizar ángulos actuales basados en posición final del cube transform
-    const el = cubeEl;
-    // extraer valores usados (si fueron aplicados inline)
-    // fallback: calcular desde deltas
-    // Guardamos los últimos aplicados
-    // parse transform from style
-    const style = el && el.style && el.style.transform;
-    if(style){
-      const mX = style.match(/rotateX\(([-0-9.]+)deg\)/);
-      const mY = style.match(/rotateY\(([-0-9.]+)deg\)/);
-      if(mX) rotateAngles.x = parseFloat(mX[1]);
-      if(mY) rotateAngles.y = parseFloat(mY[1]);
-    }
-    isRotating = false;
-    document.documentElement.style.cursor = '';
-    // reactivar parallax
-    if(window.matchMedia('(hover:hover) and (pointer: fine)').matches){
-      houseEl.addEventListener('mousemove', onMove);
-    }
-    window.removeEventListener('pointermove', onRotateMove);
-  }
-
-})();
