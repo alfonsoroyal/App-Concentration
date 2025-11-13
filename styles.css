@@ -61,18 +61,46 @@ button, .filters button, .card button{touch-action:manipulation}
 
 /* Estilos para vista 'tienda' dentro del panel del catálogo */
 #catalogPanel .catalog-page{display:block}
-#catalogPanel .catalog-categories{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:8px 0}
+#catalogPanel .catalog-categories{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-start;padding:8px 0}
 #catalogPanel .catalog-categories button{padding:10px 12px;border-radius:8px;background:#1b1f26;border:1px solid #2b2f37;color:#fff;cursor:pointer}
-#catalogPanel .catalog-page .store-grid{display:grid;gap:12px;padding:6px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+#catalogPanel .catalog-page .store-grid{display:grid;gap:18px;padding:6px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));width:100%}
 #catalogPanel .store-grid .card{display:flex;flex-direction:column;gap:8px;padding:8px}
 
-/* Responsive tuning: prefer auto-fit; fallback explicit rules for very large screens */
-@media (min-width:1300px){
-  #catalogPanel .store-grid{grid-template-columns:repeat(4,1fr)}
+/* Alineación y presentación de los filtros (fila superior) */
+#catalogFilters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:8px 0}
+#catalogFilters button{padding:8px 10px;border-radius:8px;background:#2b2f37;border:1px solid #2b2f37;color:#fff}
+#catalogFilters button.active{background:#3a6df0;border-color:#3a6df0}
+
+/* Evitar que aparezca una 'columna lateral' por margen negativo/anchos fijos */
+#catalogGrid{padding:0 6px}
+#catalogGrid .catalog-page{max-width:1200px;margin:0 auto}
+
+/* Responsive: en pantallas pequeñas, el panel ocupa todo y la grid es única columna */
+@media (max-width:600px){
+  #catalogPanel{padding:14px 16px}
+  #catalogGrid .store-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+  /* ocultar cualquier sidebar lateral si existiera por legacy */
+  #catalogPanel .sidebar, #catalogPanel .side-list{display:none!important}
 }
-@media (min-width:900px) and (max-width:1299px){
-  #catalogPanel .store-grid{grid-template-columns:repeat(3,1fr)}
+
+/* Responsive: mejor separación en pantallas grandes */
+@media (min-width:900px){
+  #catalogGrid .catalog-page{padding:8px 24px}
 }
-@media (min-width:600px) and (max-width:899px){
-  #catalogPanel .store-grid{grid-template-columns:repeat(2,1fr)}
+
+/* ----------------- Ocultar recuadros de slots en la casa ----------------- */
+/* Por defecto no mostrar los marcos, fondos ni nombres de los slots para que
+   la casa se vea limpia. Si se necesita volver a verlos, añadir la clase
+   `show-slots` al elemento `.house` (por ejemplo: document.querySelector('.house').classList.add('show-slots')). */
+.house .slot{
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transition: none !important;
 }
+.house .slot:hover{transform:none !important;box-shadow:none !important}
+.house .slot .slot-name{display:none !important}
+
+/* Clase utilitaria para restaurar la visualización de los slots (uso opcional) */
+.house.show-slots .slot{border:2px dashed #6366f1;background:rgba(21,24,33,0.7);box-shadow:0 4px 12px -2px rgba(0,0,0,0.7), inset 0 0 4px rgba(255,255,255,0.05);transition:transform .18s ease, box-shadow .18s ease}
+.house.show-slots .slot .slot-name{display:block}

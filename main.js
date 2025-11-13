@@ -400,39 +400,23 @@ function buildFilters(){
 }
 
 function showCatalogCategories(){
-  const filters = document.getElementById('catalogFilters');
-  const grid = document.getElementById('catalogGrid');
-  const backBtn = document.getElementById('catalogBackBtn');
-  backBtn.style.display = 'none';
-  filters.style.display = 'flex';
-  grid.innerHTML = '';
-  // construir botones por slot
-  const slots = Array.from(new Set(state.catalog.map(i=>i.slot))).sort();
-  // añadir opción 'all' para ver todo
-  const wrap = document.createElement('div');
-  wrap.className = 'catalog-categories';
-  const allBtn = document.createElement('button');
-  allBtn.textContent = 'Todos';
-  allBtn.dataset.slot = 'all';
-  allBtn.onclick = ()=> showCatalogCategory('all');
-  wrap.appendChild(allBtn);
-  slots.forEach(s=>{
-    const b = document.createElement('button');
-    b.textContent = s;
-    b.dataset.slot = s;
-    b.onclick = ()=> showCatalogCategory(s);
-    wrap.appendChild(b);
-  });
-  grid.appendChild(wrap);
+  // Anteriormente creábamos una lista de botones dentro del grid que duplicaba
+  // los filtros ya presentes en `#catalogFilters`. Ahora delegamos a
+  // `showCatalogCategory('all')` para que la vista inicial muestre todos los productos
+  // y mantenga la fila superior de filtros como el único control de filtrado.
+  showCatalogCategory('all');
 }
 
 function showCatalogCategory(slot){
   const filters = document.getElementById('catalogFilters');
   const grid = document.getElementById('catalogGrid');
   const backBtn = document.getElementById('catalogBackBtn');
-  // mostrar back
-  backBtn.style.display = 'inline-block';
-  filters.style.display = 'none';
+  // Mostrar u ocultar el botón "Volver" solo cuando se está dentro de una
+  // categoría específica (slot != 'all')
+  backBtn.style.display = slot === 'all' ? 'none' : 'inline-block';
+  // Mantener la fila superior de filtros visible cuando mostramos 'all'; ocultarla para
+  // vistas por categoría para dejar espacio al encabezado/volver.
+  filters.style.display = slot === 'all' ? 'flex' : 'none';
   grid.innerHTML = '';
   const page = document.createElement('div');
   page.className = 'catalog-page';
