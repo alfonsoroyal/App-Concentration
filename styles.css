@@ -93,14 +93,58 @@ button, .filters button, .card button{touch-action:manipulation}
    la casa se vea limpia. Si se necesita volver a verlos, añadir la clase
    `show-slots` al elemento `.house` (por ejemplo: document.querySelector('.house').classList.add('show-slots')). */
 .house .slot{
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  transition: none !important;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  /* permitimos transformaciones y transiciones para los efectos 3D */
+  transition: transform .18s ease, box-shadow .18s ease;
 }
-.house .slot:hover{transform:none !important;box-shadow:none !important}
-.house .slot .slot-name{display:none !important}
+.house .slot .slot-name{display:none}
 
 /* Clase utilitaria para restaurar la visualización de los slots (uso opcional) */
 .house.show-slots .slot{border:2px dashed #6366f1;background:rgba(21,24,33,0.7);box-shadow:0 4px 12px -2px rgba(0,0,0,0.7), inset 0 0 4px rgba(255,255,255,0.05);transition:transform .18s ease, box-shadow .18s ease}
 .house.show-slots .slot .slot-name{display:block}
+
+/* ================== Nuevos estilos 3D y de interacción ================== */
+.house-wrapper{perspective:1100px}
+.house{transform-style:preserve-3d;transition:transform .25s cubic-bezier(.2,.9,.3,1);will-change:transform}
+
+/* profundidad por defecto (puedes ajustar por slot) */
+.slot{transform: translateZ(var(--z,0px));}
+
+/* Depth hints: asignar valor --z por slot para que se vean estratificados */
+.slot[data-slot="sofa"]{ --z: 36px }
+.slot[data-slot="mesa"]{ --z: 28px }
+.slot[data-slot="lampara"]{ --z: 42px }
+.slot[data-slot="cuadro"]{ --z: 18px }
+.slot[data-slot="cocina_mueble"]{ --z: 20px }
+.slot[data-slot="cocina_frigorifico"]{ --z: 24px }
+.slot[data-slot="cocina_horno"]{ --z: 16px }
+.slot[data-slot="planta_suelo"]{ --z: 30px }
+.slot[data-slot="planta_colgante"]{ --z: 40px }
+.slot[data-slot="alfombra"]{ --z: 8px }
+.slot[data-slot="estanteria"]{ --z: 26px }
+
+/* Efecto al resaltar (dragenter) */
+.slot.highlight{ box-shadow: 0 18px 40px rgba(0,0,0,0.6); transform: translateZ(calc(var(--z,0px) + 24px)) scale(1.02); z-index:60 }
+.slot.highlight .slot-name{ display:block }
+
+/* Imagen dentro del slot: profundidad y sombreado realista */
+.slot img{ transform: translateZ(8px); transition: transform .25s ease, filter .2s ease; display:block; max-width:100%; max-height:100%; }
+.slot.filled img{ filter: drop-shadow(0 18px 30px rgba(0,0,0,0.65)); }
+
+/* Indicar visualmente cuando se está arrastrando desde el catálogo */
+.drag-source{ opacity:0.7; transform: scale(.98); }
+
+/* cursor y overlay de drop */
+.slot::after{ content:''; position:absolute; inset:0; pointer-events:none; border-radius:8px; transition:opacity .15s ease; }
+.slot.highlight::after{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.2)); opacity:1 }
+
+/* Pequeña etiqueta de ayuda sobre slots (aparece al hacer hover en escritorio) */
+.slot:hover .slot-name{ display:block; position:absolute; top:-22px; left:0; background:rgba(0,0,0,0.55); padding:4px 8px; border-radius:6px; font-size:12px }
+
+/* Estilos para la imagen durante el drag (fuera del slot) */
+html.dragging-img{ cursor:grabbing }
+
+/* Mejorar visibilidad en modo 3D activado */
+.house.show-3d{ box-shadow: 0 16px 60px rgba(0,0,0,0.65), inset 0 -20px 60px rgba(0,0,0,0.35) }
